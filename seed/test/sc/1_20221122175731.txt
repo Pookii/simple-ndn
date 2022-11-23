@@ -1,1 +1,0 @@
-hello, I am file ./seed/test/sc/1_20221122175731.txt from device PiA/nodeB
