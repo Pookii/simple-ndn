@@ -5,23 +5,15 @@ import sys
 sys.path.append('/Users/pooki/Documents/lecture/Scalable Computing/project3/simple-ndn/')
 # sys.path.append('../')
 from core.Structures import *
-class Router:
+
+class Node:
     def __init__(self):
-
-        self.register_cmd = 'register:'
-        self.data_cmd = 'data:'
-        self.interest_cmd = 'interest:'
-
         self.host = ''
         self.port = 50000
-
+        self.register_cmd = 'registerFIB:'
+        self.interest_cmd = 'interest:'
         self.fib_path = os.getcwd() +'/router/fib'
         self.fib = FIB(self.fib_path)
-
-        self.pit_path = os.getcwd() + '/router/pit'
-        self.pit = PIT(self.pit_path)
-
-        self.cache = ContentStore(500)
 
     def register_fib(self, msg, addr):
         # insert a new fib record
@@ -30,10 +22,10 @@ class Router:
             file_name = msg.split(':')[1].split('&')[0]
             print('file_name: ' + file_name)
             (prefix, filename) = os.path.split(file_name)
-            self.fib.add_record(prefix, addr, ttl)
+            self.fib.add_new_record(prefix, addr, ttl)
 
     def search_pit(self):
-
+        pass
 
     def search_cs(self):
         pass
@@ -43,7 +35,8 @@ class Router:
             pass
         elif msg.startswith(self.register_cmd):
             self.register_fib(msg, addr)
-        elif msg.startswith(self.data_cmd):
+
+    def
 
 
     def listen(self):
