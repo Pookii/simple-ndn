@@ -13,7 +13,6 @@ class FIB:
     def setup(self):
         if not os.path.exists(self.path):
             (fib_dir, filename) = os.path.split(self.path)
-
             if not os.path.exists(fib_dir):
                 os.makedirs(fib_dir)
 
@@ -23,13 +22,13 @@ class FIB:
         else:
             self.record = pd.read_csv(self.path)
 
+    # addr: 'ip:port'
     def add_record(self, name_prefix, addr, ttl):
-
+        # print('fib path: %s' % self.path)
         if self.record is None:
             self.setup()
 
         old_record = self.record.loc[(self.record['source_name'] == name_prefix)]
-
         if (old_record is not None) and (len(old_record) > 0):
             # same name_prefix in fib
             if int(list(old_record['ttl'])[0]) > int(ttl):
@@ -48,22 +47,23 @@ class FIB:
         if self.record is None:
             self.setup()
 
-        target = self.record.loc[(self.record['source_name'] == name_prefix)]
-        if (target is not None) and (len(target) > 0):
-            next_section = list(target['next_section'])[0]
+        for i, r in self.record.iterrows():
+            source_name = str(r['source_name'])
+            if name_prefix.startswith(source_name):
+                next_section = str(r['next_section'])
         return next_section
 
 
 class InterestPacket:
-    def __init__(self, face, nonce):
-        self.face = face
-        self.nonce = nonce
+    def __init__(self, ip, port):
+        self.ip = ip
+        self.port = port
 
 class PIT:
     def __init__(self, path):
         self.path = path
         # key: source name
-        # value: '[(previous_section, nonce)]'
+        # value: '['ip, port')]'
         self.record = None
 
     def setup(self):
@@ -79,48 +79,32 @@ class PIT:
         else:
             self.record = pd.read_csv(self.path)
 
-    def add_record(self, name_prefix, intersest_record: InterestPacket):
+    # addr: 'ip:port'
+    def add_record(self, name_prefix, addr):
 
         if self.record is None:
             self.setup()
-
-        face = intersest_record.face
-        nonce = intersest_record.nonce
 
         old_record = self.record.loc[(self.record['source_name'] == name_prefix)]
 
         if (old_record is not None) and (len(old_record) > 0):
             requesters = list(old_record['requester'])[0]
-            print(requesters)
             # string to list
             requesters = ast.literal_eval(requesters)
-
-            is_in = False
-            for requester in requesters:
-                old_face = requester.split(';')[0]
-                old_nonce = requester.split(';')[1]
-                if face == old_face and nonce == old_nonce:
-                    is_in = True
-                    print("is in")
-                    break
-
-            # add new face into same name_prefix
-            if not is_in:
-                req = face + ';' + nonce
-                requesters.append(req)
-                print(requesters)
+            # add new addr into same name_prefix
+            if addr not in requesters:
+                requesters.append(addr)
                 self.record.loc[(self.record['source_name'] == name_prefix), 'requester'] = \
                     value = '[' + ','.join("'" + x + "'" for x in requesters) + ']'
                 self.record.to_csv(self.path, index=False)
-
         else:
             # add a new record
-            req = "'" + face + ';' + nonce + "'"
+            req = "'" + addr + "'"
             new_record = {'source_name': name_prefix, 'requester': '[' + req + ']'}
             self.record = self.record.append(new_record, ignore_index=True)
             self.record.to_csv(self.path, index=False)
 
-    def find_next_section(self, name_prefix):
+    def find_requesters(self, name_prefix):
         if self.record is None:
             self.setup()
 
@@ -129,10 +113,8 @@ class PIT:
 
         if (old_record is not None) and (len(old_record) > 0):
             requesters = list(old_record['requester'])[0]
-            requesters = ast.literal_eval(requesters)
-            for req in requesters:
-                face = req.split(';')[0]
-                ret.append(face)
+            ret = ast.literal_eval(requesters)
+
         return ret
 
     def remove_record(self, name_prefix):
@@ -161,31 +143,19 @@ class ContentStore:
 
 if __name__ == '__main__':
     # fib = FIB('test/fib')
-    # fib.add_record('/test/1/2', '127.0.0.2', '0')
-    # fib.add_record('/test/1/3', '127.0.0.1', '0')
-    # fib.find_next_section('/test/1/2')
+    # fib.add_record('/test/1/2', '127.0.0.2:8080', '0')
+    # fib.add_record('/test/1/3', '127.0.0.1:8001', '0')
+    # print(fib.find_next_section('/test/1/2'))
 
-    # pit = PIT('test/pit')
-    # intpak = InterestPacket('127.2.2.1', '145')
-    # intpak1 = InterestPacket('127.0.0.6', '124')
-    # # intpak2 = InterestPacket('127.0.0.3', '124')
-    # #
-    # #
-    # pit.add_record('/test/1/5', intpak)
-    # pit.add_record('/test/1/6', intpak1)
-    # # pit.add_record('/test/1/2', intpak1)
-    # # pit.add_record('/test/1/2', intpak2)
-    # # pit.find_next_section('/test/1/3')
-    #
-    # ret = pit.find_next_section('/test/1/3')
-    # print(ret)
-    #
-    # pit.remove_record('/test/1/3')
-    #
-    # ret = pit.find_next_section('/test/1/3')
-    # print(ret)
+    pit = PIT('test/pit')
 
-    cs = ContentStore()
-    cs.add_record('/test/1/2', 'intpak2')
-    cs.find_data('/test/1/1')
-    cs.add_record('/test/1/2', 'intpak2')
+    pit.add_record('/test/1/5', '127.0.0.2:5000')
+    pit.add_record('/test/1/5', "127.0.0.2:5001")
+    pit.add_record('/test/1/3', "127.0.0.2:5001")
+
+    print(pit.find_requesters('/test/1/3'))
+
+    # cs = ContentStore()
+    # cs.add_record('/test/1/2', 'intpak2')
+    # cs.find_data('/test/1/1')
+    # cs.add_record('/test/1/2', 'intpak2')
