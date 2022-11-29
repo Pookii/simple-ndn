@@ -1,8 +1,12 @@
 import socket
-from Structures import *
+import sys
+sys.path.append('/Users/pooki/Documents/lecture/Scalable Computing/project3/simple-ndn/')
+# sys.path.append('../')
+from router.Structures import *
+
 class Router:
     def __init__(self, name_prefix, port):
-        # /area1
+        # /area43
         self.name_prefix = name_prefix
 
         self.register_cmd = 'register'
@@ -15,13 +19,14 @@ class Router:
         self.port = port
 
         self.fib_path = os.getcwd() +'/router/%s/fib' % self.name_prefix
-        print(self.fib_path)
+        # print(self.fib_path)
         self.fib = FIB(self.fib_path)
 
         self.pit_path = os.getcwd() + '/router/%s/pit' % self.name_prefix
         self.pit = PIT(self.pit_path)
 
         self.cache = ContentStore(500)
+
 
     def register_fib(self, info, addr):
         # insert a new fib record
@@ -35,8 +40,13 @@ class Router:
             ip = str(r['ip'])
             port = str(r['port'])
             # print("%s, %s, %s, %s" % (ip, port, ip_req, port_req))
+            last_split = file_name.rfind('/')
+            filename = file_name[:last_split]
+            if last_split == 0:
+                filename = file_name
+
             if not ((ip == ip_req) and (port_req == port)):
-                msg = self.register_cmd + ':/' + self.name_prefix + '&ttl=%d' % ttl + ';' + str(self.port)
+                msg = self.register_cmd + ':' + filename + '&ttl=%d' % ttl + ';' + str(self.port)
                 self.send_msg(msg, ip, port)
 
     def process_interest(self, data_name, addr):
@@ -51,18 +61,33 @@ class Router:
         if next_section is not None:
             ip = next_section.split(':')[0]
             port = next_section.split(':')[1]
-            msg = self.interest_cmd + ':' + data_name
+            msg = self.interest_cmd + ':' + data_name + "&sender=/%s"%self.name_prefix
             data = self.send_msg(msg, ip, port)
     #             send to next_section
         return data
+
     def send_msg(self, msg, next_section_ip, next_section_port):
-        print("send msg: %s, %s, %s" % (msg, next_section_ip, next_section_port))
+        # print("send msg: %s, %s, %s" % (msg, next_section_ip, next_section_port))
         ack = None
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((next_section_ip, int(next_section_port)))
         s.send(msg.encode('utf-8'))
         ack = s.recv(1024).decode('utf-8')
-        print(ack)
+
+        if ack.startswith(self.data_cmd):
+            #     data:dataname^datacontent&sender=xx
+            #     receive data packet, save to cache
+            # data:dataname^datacentent&sender=xx
+            ack = ack.split(':')[1]
+            data_name = ack.split('^')[0]
+            ack = ack.split('^')[1]
+            requester_name = ack.split('&')[1].split("=")[1]
+            data_content = ack.split('&')[0]
+
+            print("Received data name:%s, content:%s, from %s" % (data_content, data_name, requester_name))
+
+            self.cache.add_record(data_name, data_content)
+
         s.close()
         return ack
 
@@ -71,12 +96,14 @@ class Router:
     #     if has, send to all requester then remove this record
     #     save in cache.
         self.cache.add_record(data_name, data_content)
+        # print("process_data: name: %s, content: %s" % (data_name, data_content))
         requesters = self.pit.find_requesters(data_name)
         if len(requesters) > 0:
             for request in requesters:
                 next_ip = request.split(':')[0]
                 next_port = request.split(':')[1]
                 msg = self.data_cmd + ':' + data_name + '&' + data_content
+                print("send msg: %s, %s, %s" % (msg, next_ip, next_port))
                 self.send_msg(msg, next_ip, next_port)
 
     def getHost(self):
@@ -84,10 +111,11 @@ class Router:
         host = socket.gethostbyname(hostname)
         # print("name: %s, router host: %s, port: %d" % (self.name_prefix, host, self.port))
         return host
+
     def listen(self):
         buff_size = 1024
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print("star listen: name: %s, router host, %s, port: %d" % (self.name_prefix, self.getHost(), self.port))
+        # print("star listen: name: %s, router host, %s, port: %d" % (self.name_prefix, self.getHost(), self.port))
         server.bind((self.getHost(), self.port))
         server.listen(10)
 
@@ -98,33 +126,43 @@ class Router:
             send_addr = ip+':'+str(send_port)
 
             msg = client.recv(buff_size).decode('utf-8')
-            print('Received data %s from %s' % (msg, addr))
+
+            requester_name = msg.split('&')[1].split("=")[1]
+            msg = msg.split('&')[0]
 
             cmd = msg.split(':')[0]
             data_name = msg.split(':')[1]
 
             if cmd == self.interest_cmd:
-                # interest:/area1/device1/sensor1/1
+                # interest:/area43/device1/sensor1/1&sender=jj
+                print('Received interest %s, from %s' % (data_name, requester_name))
                 data = self.cache.find_data(data_name)
                 #  already have data, send to client
-                if data is not None:
-                    client.send(str(data).encode('utf-8'))
-                else:
+                if data is None:
                     data = self.process_interest(data_name, send_addr)
-                    print("send data: %s" % data)
-                    client.send(str(data).encode('utf-8'))
+                    # self.cache.add_record(data_name, data)
+                else:
+                    print("hit cache")
+
+                send_data = self.data_cmd + ":" + data_name + "^" + data + "&sender=%s" % self.name_prefix
+                # print(send_data)
+                client.send(str(send_data).encode('utf-8'))
 
             elif cmd == self.data_cmd:
-            #     data:/area1/device1/sensor1/1&content=222
+            #     data:/area43/device1/sensor1/1&content=222
+                print('Received data %s, from %s' % (data_name, requester_name))
                 data_name = data_name.split('&')[0]
                 data_content = data_name.split('&')[1]
                 self.process_data(data_name, data_content)
             elif cmd == self.register_cmd:
+                # print('Received register %s, from %s' % (data_name, requester_name))
                 if ';' in data_name:
                     listen_port = data_name.split(';')[1]
                     listen_addr = ip + ':' + str(listen_port)
                     data_name = data_name.split(';')[0]
-                    self.register_fib(data_name, listen_addr)
+                    local_addr = self.getHost() + ':' + str(self.port)
+                    if local_addr != listen_addr:
+                        self.register_fib(data_name, listen_addr)
                 client.send(str("%s:%s register_fib done"%(self.getHost(), str(self.port))).encode('utf-8'))
 
 

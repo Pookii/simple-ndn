@@ -139,6 +139,7 @@ class ContentStore:
         return value
 
     def add_record(self, name_prefix, data):
+        print("cache add record: name: %s, data: %s" % (name_prefix, data))
         self.cache[name_prefix] = data
 
 if __name__ == '__main__':

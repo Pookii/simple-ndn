@@ -70,16 +70,18 @@ class Device:
 
         client.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         client.send(msg)
+        # print(msg)
         print("Send inteset %s,  from %s" % (data_name, self.device_name))
         # data:dataname^datacentent&sender=xx
         ack = client.recv(1024).decode('utf-8')
+        # print(ack)
         ack = ack.split(':')[1]
         data_name = ack.split('^')[0]
         ack = ack.split('^')[1]
         requester_name = ack.split('&')[1].split("=")[1]
         data_content = ack.split('&')[0]
 
-        print("Received data name:%s, content:%s, from %s" % (data_content, data_name, requester_name))
+        print("Received data name:%s, content:%s, from %s" % (data_name, data_content, requester_name))
         client.close()
 
     def listen(self):
@@ -111,8 +113,11 @@ class Device:
                 client.close()
                 time.sleep(1)
 
+
 if __name__ == '__main__':
-    device1 = Device('/area1/device1', '127.0.0.1', 60001, 50001, 50002)
-    device1.generate_date()
-    device1.register_to_router()
-    device1.listen()
+
+    device3 = Device('/area2/device3', '127.0.0.1', 60002, 50005, 50006)
+    # device3.generate_data()
+    # device3.register_to_router()
+    # time.sleep(2)
+    device3.send_interest('/area1/device1/speed/29094207.txt')
