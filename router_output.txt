@@ -1,4 +1,0 @@
-/Users/pooki/Documents/lecture/Scalable Computing/project3/simple-ndn/core/Structures.py:42: FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
-  self.record = self.record.append(new_record, ignore_index=True)
-/Users/pooki/Documents/lecture/Scalable Computing/project3/simple-ndn/core/Structures.py:42: FutureWarning: The frame.append method is deprecated and will be removed from pandas in a future version. Use pandas.concat instead.
-  self.record = self.record.append(new_record, ignore_index=True)
