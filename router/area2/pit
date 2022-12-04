@@ -3,3 +3,4 @@ source_name,requester
 /area1/device1/speed/1&sender=/area2/device1,['10.108.9.2:50003']
 /area1/device1/speed/29094207,['10.108.9.2:50003']
 /area1/device1/speed/29094207.txt,"['10.108.9.2:50003','127.0.0.1:50003']"
+/area1/device1/speed/1.txt,"['127.0.0.1:50003','127.0.0.1:50005']"

@@ -39,7 +39,7 @@ class Device:
         client.connect((self.gateway_host, self.gateway_port))
         client.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 
-        msg = self.register_cmd + self.device_name + '&' + 'ttl=0' + ';' + str(self.port_listen)
+        msg = self.register_cmd + self.device_name + '&' + 'ttl=0' + "&sender=" + self.device_name +  ';' + str(self.port_listen)
         # print("register_to_router: %s" % msg)
         msg = msg.encode('utf-8')
         client.send(msg)
@@ -120,4 +120,4 @@ if __name__ == '__main__':
     # device2.generate_data()
     # device2.register_to_router()
     # time.sleep(3)
-    device2.send_interest('/area1/device1/speed/29094207.txt')
+    device2.send_interest('/area1/device1/speed/1.txt')

@@ -1,8 +1,9 @@
 import socket
 import sys
-sys.path.append('/Users/pooki/Documents/lecture/Scalable Computing/project3/simple-ndn/')
+
 # sys.path.append('../')
-from router.Structures import *
+from Structures import *
+
 class Router:
     def __init__(self, name_prefix, port):
         # /area43
@@ -29,7 +30,6 @@ class Router:
 
     def register_fib(self, info, addr):
         # insert a new fib record
-        # print("register_fib: " + addr)
         ttl = int(info.split('&')[1].split("=")[1]) + 1
         file_name = info.split('&')[0]
         self.fib.add_record(file_name, addr, ttl)
@@ -45,7 +45,7 @@ class Router:
                 filename = file_name
 
             if not ((ip == ip_req) and (port_req == port)):
-                msg = self.register_cmd + ':' + filename + '&ttl=%d' % ttl + ';' + str(self.port)
+                msg = self.register_cmd + ':' + filename + '&ttl=%d' % ttl + "&sender=" + self.name_prefix + ';' + str(self.port)
                 self.send_msg(msg, ip, port)
 
     def process_interest(self, data_name, addr):
@@ -108,7 +108,7 @@ class Router:
     def getHost(self):
         hostname = socket.gethostname()
         host = socket.gethostbyname(hostname)
-        # print("name: %s, router host: %s, port: %d" % (self.name_prefix, host, self.port))
+        print("name: %s, router host: %s, port: %d" % (self.name_prefix, host, self.port))
         return host
 
     def listen(self):
@@ -125,15 +125,13 @@ class Router:
             send_addr = ip+':'+str(send_port)
 
             msg = client.recv(buff_size).decode('utf-8')
-
-            requester_name = msg.split('&')[1].split("=")[1]
-            msg = msg.split('&')[0]
-
+            
             cmd = msg.split(':')[0]
-            data_name = msg.split(':')[1]
-
             if cmd == self.interest_cmd:
                 # interest:/area43/device1/sensor1/1&sender=jj
+                requester_name = msg.split('&')[1].split("=")[1]
+                msg = msg.split('&')[0]
+                data_name = msg.split(':')[1]
                 print('Received interest %s, from %s' % (data_name, requester_name))
                 data = self.cache.find_data(data_name)
                 #  already have data, send to client
@@ -148,19 +146,28 @@ class Router:
 
             elif cmd == self.data_cmd:
             #     data:/area43/device1/sensor1/1&content=222
+                requester_name = msg.split('&')[1].split("=")[1]
+                msg = msg.split('&')[0]
+                data_name = msg.split(':')[1]
                 print('Received data %s, from %s' % (data_name, requester_name))
                 data_name = data_name.split('&')[0]
                 data_content = data_name.split('&')[1]
                 self.process_data(data_name, data_content)
             elif cmd == self.register_cmd:
-                # print('Received register %s, from %s' % (data_name, requester_name))
-                if ';' in data_name:
-                    listen_port = data_name.split(';')[1]
-                    listen_addr = ip + ':' + str(listen_port)
-                    data_name = data_name.split(';')[0]
-                    local_addr = self.getHost() + ':' + str(self.port)
-                    if local_addr != listen_addr:
-                        self.register_fib(data_name, listen_addr)
+                # register:/area43/device1&ttl=0&sender=/area43/device1;port_listen
+                extra = msg.split('&')[2].split("=")[1]
+                requester_name = extra.split(";")[0]
+                data_name = msg.split('&')[0]
+                data_name = data_name.split(':')[1]
+                print('Received register %s, from %s' % (data_name, requester_name))
+                
+                listen_port = extra.split(';')[1]
+                listen_addr = ip + ':' + str(listen_port)
+                # data_name&ttl=0
+                data_name = data_name + "&" + msg.split('&')[1]
+                local_addr = self.getHost() + ':' + str(self.port)
+                if local_addr != listen_addr:
+                    self.register_fib(data_name, listen_addr)
                 client.send(str("%s:%s register_fib done"%(self.getHost(), str(self.port))).encode('utf-8'))
 
 

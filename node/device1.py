@@ -38,8 +38,8 @@ class Device:
 
         client.connect((self.gateway_host, self.gateway_port))
         client.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-
-        msg = self.register_cmd + self.device_name + '&' + 'ttl=0' + ';' + str(self.port_listen)
+        # register:/area43/device1&ttl=0&sender=/area43/device1;port_listen
+        msg = self.register_cmd + self.device_name + '&' + 'ttl=0' + "&sender=" + self.device_name + ';' + str(self.port_listen)
         # print("register_to_router: %s" % msg)
         msg = msg.encode('utf-8')
         client.send(msg)

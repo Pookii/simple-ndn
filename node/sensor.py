@@ -18,7 +18,8 @@ class Sensor:
     def create_file(self):
         # /device1/sensorA/1.txt
         time_nonce = datetime.now().strftime('%d%H%M%S')
-        file_name = "%s.txt" % time_nonce
+        # file_name = "%s.txt" % time_nonce
+        file_name = "1.txt"
         save_path = self.base_dir + file_name
 
         name_prefix = self.base_name + file_name

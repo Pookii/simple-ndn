@@ -1,4 +1,2 @@
 source_name,next_section,ttl
 /area1,127.0.0.1:60001,2
-/area2/device1,127.0.0.1:50004,1
-/area2/device3,127.0.0.1:50006,1

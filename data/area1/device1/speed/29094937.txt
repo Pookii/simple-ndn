@@ -1,1 +1,0 @@
-/area1/device1/speed, 58 km/h
